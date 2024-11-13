@@ -25,7 +25,7 @@
     ```
 
 - docker-compose.yml
-  > 初始化資料庫時執行的 SQL
+  > docker compose 腳本
   ```yaml
   version: '3.8'
   services:
