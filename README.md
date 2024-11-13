@@ -25,7 +25,8 @@
     ```
 
 - docker-compose.yml
-  > docker compose 腳本
+  > docker compose 腳本 (
+  > 提醒：master 使用 5432 port, slave 使用 5433 port
   ```yaml
   version: '3.8'
   services:
