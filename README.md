@@ -70,22 +70,28 @@
         # 指定連接主節點所用的複製使用者和密碼 (00_init.sql 內建立的使用者)
         PGUSER: replicator
         PGPASSWORD: replicator_password
-      # 使用 pg_basebackup 命令從主節點創建基礎備份，並設置參數：
-      #   --pgdata=/var/lib/postgresql/data：備份存儲在從節點的數據目錄中。
-      #   -R：自動創建 recovery.conf 文件，這樣從節點啟動時會以複製模式連接主節點。
-      #   --slot=replication_slot：指定在主節點上使用的複製槽，以確保 WAL 記錄保留。
-      #   --host=postgres_master 和 --port=5432：指定主節點的地址和端口。
-      # 執行完成後，將數據目錄的權限設為 0700，以確保只有數據庫進程能夠讀寫這些文件
+      # 判斷 /var/lib/postgresql/data 為空(第一次啟動)才執行初始指令
+      #   pg_basebackup 命令從主節點創建基礎備份，並設置參數：
+      #     --pgdata=/var/lib/postgresql/data：備份存儲在從節點的數據目錄中。
+      #     -R：自動創建 recovery.conf 文件，這樣從節點啟動時會以複製模式連接主節點。
+      #     --slot=replication_slot：指定在主節點上使用的複製槽，以確保 WAL 記錄保留。
+      #     --host=postgres_master 和 --port=5432：指定主節點的地址和端口。
+      #   執行完成後，將數據目錄的權限設為 0700，以確保只有數據庫進程能夠讀寫這些文件
       # 最後啟動 PostgreSQL 服務
       command: |
         bash -c "
-        until pg_basebackup --pgdata=/var/lib/postgresql/data -R --slot=replication_slot --host=postgres_master --port=5432
-        do
-        echo 'Waiting for primary to connect...'
-        sleep 1s
-        done
-        echo 'Backup done, starting replica...'
-        chmod 0700 /var/lib/postgresql/data
+        if [ -z \"\$(ls -A /var/lib/postgresql/data)\" ]; then
+          echo 'Data directory is empty. Starting pg_basebackup...'
+          until pg_basebackup --pgdata=/var/lib/postgresql/data -R --slot=replication_slot --host=postgres_master --port=5432
+          do
+            echo 'Waiting for primary to connect...'
+            sleep 1s
+          done
+          echo 'Backup done, starting replica...'
+          chmod 0700 /var/lib/postgresql/data
+        else
+          echo 'Data directory is not empty. Skipping pg_basebackup...'
+        fi
         postgres
         "
       volumes:
